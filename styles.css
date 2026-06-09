@@ -1,0 +1,50 @@
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg-dark: #0f172a;
+  --panel-bg: rgba(30, 41, 59, 0.7);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #10b981; /* Success Green */
+  --accent-gold: #fbbf24; /* Gold color for high funding */
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  font-family: 'Outfit', 'Pretendard', sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background-image: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent 400px),
+                    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1), transparent 400px);
+}
+
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.chat-bubble-ai {
+  background-color: rgba(99, 102, 241, 0.15);
+  border-left: 4px solid var(--primary);
+}
+
+.chat-bubble-user {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-right: 4px solid var(--accent);
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(0.98); }
+}
+
+.analyzing-indicator {
+  animation: pulse-soft 2s infinite ease-in-out;
+}

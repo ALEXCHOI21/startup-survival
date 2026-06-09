@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스타트업 서바이벌 - AI 투자 심사 시뮬레이터</title>
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Outfit', 'Noto Sans KR', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="flex flex-col min-height-screen justify-between">
+
+  <!-- Header -->
+  <header class="w-full max-w-5xl mx-auto px-6 py-4 flex justify-between items-center border-b border-slate-800">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center font-bold text-lg text-white">S</div>
+      <span class="font-bold text-lg tracking-wider bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">STARTUP SURVIVAL</span>
+    </div>
+    <div class="flex items-center space-x-2">
+      <span class="text-xs text-slate-400">Powered by Gemini</span>
+      <input type="password" id="api-key" placeholder="Gemini API Key 입력" class="bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1 focus:outline-none focus:border-indigo-500 w-40">
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 w-full max-w-5xl mx-auto px-6 py-8 flex flex-col justify-center">
+    
+    <!-- 1. Start Setup Screen -->
+    <div id="screen-start" class="w-full max-w-md mx-auto glass-panel p-8 shadow-xl">
+      <div class="text-center mb-8">
+        <div class="w-16 h-16 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">🤖</div>
+        <h1 class="text-2xl font-bold mb-2">AI 투자 유치 서바이벌</h1>
+        <p class="text-sm text-slate-400">아이디어를 설명하고 AI 심사위원의 압박 질문을 극복하세요!</p>
+      </div>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">스타트업 이름 (또는 팀명)</label>
+          <input type="text" id="startup-name" placeholder="예: 초록화분 코퍼레이션" class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 uppercase mb-2">창업 아이템 및 한 줄 피칭</label>
+          <textarea id="startup-item" rows="3" placeholder="예: 버려지는 커피 찌꺼기를 활용해 물에 100% 분해되는 친환경 식물 화분을 제작하고 판매합니다." class="w-full bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+        </div>
+        <button id="btn-start-game" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 rounded-lg transition-colors shadow-lg shadow-indigo-600/20">
+          모의 투자 심사 시작하기
+        </button>
+      </div>
+    </div>
+
+    <!-- 2. Chat / Simulation Screen (Hidden initially) -->
+    <div id="screen-chat" class="hidden w-full max-w-3xl mx-auto flex flex-col h-[600px] glass-panel shadow-2xl overflow-hidden">
+      <!-- Chat Header -->
+      <div class="px-6 py-4 border-b border-slate-800 bg-slate-900/40 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-full bg-indigo-900/50 border border-indigo-500/30 flex items-center justify-center text-xl">👨‍💼</div>
+          <div>
+            <h3 class="font-semibold text-sm">에이든 (Aiden)</h3>
+            <span class="text-xs text-emerald-400 flex items-center"><span class="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-1.5 animate-pulse"></span>VC 수석 심사역</span>
+          </div>
+        </div>
+        <div class="text-xs font-semibold bg-indigo-900/40 text-indigo-400 px-3 py-1 rounded-full" id="question-progress">
+          진행률: 0 / 5
+        </div>
+      </div>
+
+      <!-- Chat History -->
+      <div id="chat-history" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <!-- Messages will be dynamically appended here -->
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="p-4 border-t border-slate-800 bg-slate-900/20">
+        <div class="flex space-x-3">
+          <input type="text" id="chat-input" placeholder="심사역의 질문에 성실히 답변해 주세요..." class="flex-1 bg-slate-900/60 border border-slate-700 rounded-lg px-4 py-3 text-slate-200 focus:outline-none focus:border-indigo-500 text-sm">
+          <button id="btn-send" class="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors text-sm shadow-md">
+            전송
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Result Screen (Hidden initially) -->
+    <div id="screen-result" class="hidden w-full max-w-2xl mx-auto glass-panel p-8 shadow-2xl text-center">
+      <div class="mb-6">
+        <span class="text-5xl">🏆</span>
+        <h2 class="text-2xl font-bold mt-3" id="result-startup-name">초록화분 코퍼레이션</h2>
+        <p class="text-sm text-slate-400 mt-1">최종 투자 유치 심사 결과</p>
+      </div>
+
+      <!-- Funding Score Panel -->
+      <div class="bg-indigo-950/20 border border-indigo-500/20 rounded-2xl py-8 px-6 mb-8 max-w-md mx-auto">
+        <span class="text-xs font-semibold text-indigo-400 tracking-widest uppercase">최종 획득 모의 투자금</span>
+        <div class="text-4xl font-extrabold text-amber-400 mt-2 tracking-tight" id="result-funding">
+          5억 0,000만 원
+        </div>
+        <div class="text-xs text-slate-400 mt-1">(최대 한도 5억 원)</div>
+      </div>
+
+      <!-- Feedback Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-8">
+        <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+          <h4 class="text-sm font-semibold text-emerald-400 mb-3 flex items-center">
+            <span class="mr-2">👍</span>강점 (Strengths)
+          </h4>
+          <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4" id="result-strengths">
+            <!-- Dynamically populated -->
+          </ul>
+        </div>
+        <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+          <h4 class="text-sm font-semibold text-rose-400 mb-3 flex items-center">
+            <span class="mr-2">⚠️</span>보완점 (Weaknesses)
+          </h4>
+          <ul class="text-xs text-slate-300 space-y-2 list-disc pl-4" id="result-weaknesses">
+            <!-- Dynamically populated -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- 1 Minute IR Speech -->
+      <div class="bg-slate-900/40 border border-slate-800 rounded-xl p-5 text-left mb-8">
+        <h4 class="text-sm font-semibold text-indigo-400 mb-3 flex items-center justify-between">
+          <span class="flex items-center"><span class="mr-2">📢</span>최종 고도화된 1분 IR 피칭 대본</span>
+          <button id="btn-copy-pitch" class="text-xs bg-indigo-900/40 hover:bg-indigo-800 text-indigo-300 border border-indigo-700/30 px-2.5 py-1 rounded">복사하기</button>
+        </h4>
+        <p class="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap" id="result-pitch">
+          <!-- Dynamically populated -->
+        </p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex space-x-4 justify-center">
+        <button id="btn-restart" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold px-6 py-3.5 rounded-lg transition-colors text-sm">
+          처음으로 돌아가기
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="w-full text-center py-4 border-t border-slate-900 text-xs text-slate-500">
+    © 2026 대전창업체험센터. All Rights Reserved. Designed by ChoiGPT Corp.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
