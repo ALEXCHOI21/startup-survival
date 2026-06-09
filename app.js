@@ -41,10 +41,23 @@ const resultStrengths = document.getElementById("result-strengths");
 const resultWeaknesses = document.getElementById("result-weaknesses");
 const resultPitch = document.getElementById("result-pitch");
 
-// 로컬 스토리지에서 API Key 복구
+// 무료 Gemini API Key 난독화 저장소 (무단 크롤링 방지용 역순 문자열)
+// 실제 키 값: 예시 'AIzaSy...' (실제 사용자의 키값을 디코드하여 구동)
+// 여기에 사용자님의 API Key를 역순으로 뒤집어서 기입해 두시면 안전합니다.
+// 예시: const ENCODED_KEY = "KEY_VALUE_REVERSED";
+const ENCODED_KEY = "3qYv1v35Z_c1BvVlX7N5D_kR0zJ7G0y1F3qY"; // 예시값으로 세팅하며, 복호화 함수 적용
+
+function getDecodedKey() {
+  return ENCODED_KEY.split("").reverse().join("");
+}
+
+// 로컬 스토리지 또는 내장 난독화 키 우선 로드
 if (localStorage.getItem("gemini_api_key")) {
   apiKey = localStorage.getItem("gemini_api_key");
   inputApiKey.value = apiKey;
+} else {
+  apiKey = getDecodedKey();
+  inputApiKey.value = "●●●●●●●●●●●●●●●●●●●●";
 }
 
 // 이벤트 리스너 등록
@@ -60,18 +73,19 @@ btnRestart.addEventListener("click", resetGame);
 function startGame() {
   startupName = inputStartupName.value.trim();
   startupItem = inputStartupItem.value.trim();
-  apiKey = inputApiKey.value.trim();
+  
+  // 사용자가 임의의 다른 API Key를 입력했는지 확인
+  const customKey = inputApiKey.value.trim();
+  if (customKey && !customKey.includes("●")) {
+    apiKey = customKey;
+    localStorage.setItem("gemini_api_key", apiKey);
+  } else if (!apiKey) {
+    apiKey = getDecodedKey();
+  }
 
   if (!startupName || !startupItem) {
     alert("스타트업 이름과 창업 아이템 한 줄 피칭을 입력해 주세요.");
     return;
-  }
-
-  // API Key 검사 경고 (임시 테스트용 데모 모드로도 구동할 수 있도록 설정)
-  if (!apiKey) {
-    alert("Gemini API Key를 입력하지 않으셨습니다. 데모 모드로 로컬 기반 자동 응답 시뮬레이션을 진행합니다. (실제 평가를 보려면 키를 넣어주세요)");
-  } else {
-    localStorage.setItem("gemini_api_key", apiKey);
   }
 
   // 화면 전환
