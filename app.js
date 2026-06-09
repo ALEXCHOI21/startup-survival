@@ -174,7 +174,7 @@ function appendChatMessage(sender, text) {
   messageDiv.className = `flex ${sender === "ai" ? "justify-start" : "justify-end"}`;
   
   const innerDiv = document.createElement("div");
-  innerDiv.className = `max-w-xl rounded-2xl px-5 py-3.5 text-sm shadow-md whitespace-pre-wrap leading-relaxed ${
+  innerDiv.className = `max-w-2xl rounded-2xl px-6 py-4 text-base md:text-lg shadow-md whitespace-pre-wrap leading-relaxed ${
     sender === "ai" ? "chat-bubble-ai text-slate-100" : "chat-bubble-user text-slate-100"
   }`;
   innerDiv.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // 마크다운 볼드 지원
@@ -190,10 +190,10 @@ function appendLoadingIndicator() {
   loadingDiv.id = id;
   loadingDiv.className = "flex justify-start analyzing-indicator";
   loadingDiv.innerHTML = `
-    <div class="max-w-xl rounded-2xl px-5 py-3.5 text-sm chat-bubble-ai text-slate-400 flex items-center space-x-2">
-      <span class="inline-block w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
-      <span class="inline-block w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
-      <span class="inline-block w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></span>
+    <div class="max-w-2xl rounded-2xl px-6 py-4 text-base chat-bubble-ai text-slate-400 flex items-center space-x-2">
+      <span class="inline-block w-2.5 h-2.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></span>
+      <span class="inline-block w-2.5 h-2.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></span>
+      <span class="inline-block w-2.5 h-2.5 bg-indigo-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></span>
       <span>에이든 심사위원이 답변을 검토 중입니다...</span>
     </div>
   `;
