@@ -105,6 +105,32 @@ async function handleSendMessage() {
   const answerText = inputChat.value.trim();
   if (!answerText) return;
 
+  // --- 입력값 검증 가드 (Validation Guard) ---
+  // 1. 최소 글자 수 제한 (초중고 수준을 고려하여 최소 5글자 이상)
+  if (answerText.length < 5) {
+    alert("투자 심사역 에이든: 답변이 너무 짧습니다. 조금 더 구체적으로 설명해 주세요. (최소 5자 이상 입력)");
+    return;
+  }
+
+  // 2. 무의미한 자음/모음/숫자 도배 방지 정규식 검사
+  // (예: ㅁㅁㅁ, ㅋㅋㅋ, 11111, @@@@ 등)
+  const patternRepetitive = /([ㄱ-ㅎㅏ-ㅣ0-9a-zA-Z\s])\1{2,}/g; // 3회 이상 반복 문자 감지
+  const patternHangulJaeum = /^[ㄱ-ㅎ\s]+$/; // 자음만 도배
+  const patternHangulMoeum = /^[ㅏ-ㅣ\s]+$/; // 모음만 도배
+  const patternNumberOnly = /^[0-9\s]+$/; // 숫자만 도배
+  const patternSpecialOnly = /^[^a-zA-Z0-9ㄱ-ㅎㅏ-ㅣ가-힣\s]+$/; // 특수문자만 도배
+
+  if (
+    patternHangulJaeum.test(answerText) || 
+    patternHangulMoeum.test(answerText) || 
+    patternNumberOnly.test(answerText) ||
+    patternSpecialOnly.test(answerText)
+  ) {
+    alert("투자 심사역 에이든: 질문의 의도에 맞는 올바른 단어와 문장으로 대답해 주시기 바랍니다.");
+    return;
+  }
+  // ----------------------------------------
+
   // 유저 메시지 화면에 출력
   appendChatMessage("user", answerText);
   inputChat.value = "";
