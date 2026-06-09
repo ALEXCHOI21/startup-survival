@@ -42,10 +42,8 @@ const resultWeaknesses = document.getElementById("result-weaknesses");
 const resultPitch = document.getElementById("result-pitch");
 
 // 무료 Gemini API Key 난독화 저장소 (무단 크롤링 방지용 역순 문자열)
-// 실제 키 값: 예시 'AIzaSy...' (실제 사용자의 키값을 디코드하여 구동)
-// 여기에 사용자님의 API Key를 역순으로 뒤집어서 기입해 두시면 안전합니다.
-// 예시: const ENCODED_KEY = "KEY_VALUE_REVERSED";
-const ENCODED_KEY = "3qYv1v35Z_c1BvVlX7N5D_kR0zJ7G0y1F3qY"; // 예시값으로 세팅하며, 복호화 함수 적용
+// 실제 키 값: GOOGLE_API_KEY(무료) = AIzaSyCXK-jzPURTIIXqPi4dfh0amz0VYhWsGG0
+const ENCODED_KEY = "0GGsWhYV0zma0hfd4iPqXIITRUPzj-KXCySazIA";
 
 function getDecodedKey() {
   return ENCODED_KEY.split("").reverse().join("");
