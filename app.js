@@ -6,7 +6,8 @@ let currentStep = 0; // 0: 시작화면, 1~5: 질문 진행 중, 6: 최종 평�
 let startupName = "";
 let startupItem = "";
 let chatHistory = [];
-let apiKey = "";
+let apiKeys = [];
+let currentKeyIndex = 0;
 
 // 5가지 핵심 심사 역의 질문 정의 (비전공자 타겟으로 쉽고 친근하게 변환)
 const QUESTIONS = [
@@ -41,22 +42,57 @@ const resultStrengths = document.getElementById("result-strengths");
 const resultWeaknesses = document.getElementById("result-weaknesses");
 const resultPitch = document.getElementById("result-pitch");
 
-// 무료 Gemini API Key 난독화 저장소 (무단 크롤링 방지용 역순 문자열)
-// 실제 키 값: GOOGLE_API_KEY(무료) = AIzaSyCXK-jzPURTIIXqPi4dfh0amz0VYhWsGG0
-const ENCODED_KEY = "0GGsWhYV0zma0hfd4iPqXIITRUPzj-KXCySazIA";
+// URL 파라미터 또는 로컬 스토리지에서 API 키 로드
+function initializeApiKeys() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const keysFromUrl = urlParams.get("keys");
 
-function getDecodedKey() {
-  return ENCODED_KEY.split("").reverse().join("");
+  if (keysFromUrl) {
+    // URL에 키가 있으면 파싱하여 로컬 스토리지에 저장하고 적용
+    const cleanKeys = keysFromUrl.split(",")
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+    
+    if (cleanKeys.length > 0) {
+      apiKeys = cleanKeys;
+      localStorage.setItem("gemini_api_keys", JSON.stringify(apiKeys));
+      // URL에서 키 유출 방지를 위해 주소창 청소
+      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  } else {
+    // URL에 없으면 로컬 스토리지에서 로드
+    const stored = localStorage.getItem("gemini_api_keys");
+    if (stored) {
+      try {
+        apiKeys = JSON.parse(stored);
+      } catch (e) {
+        const singleKey = localStorage.getItem("gemini_api_key");
+        if (singleKey) apiKeys = [singleKey];
+      }
+    } else {
+      const singleKey = localStorage.getItem("gemini_api_key");
+      if (singleKey) apiKeys = [singleKey];
+    }
+  }
+
+  updateApiKeyInputUI();
 }
 
-// 로컬 스토리지 또는 내장 난독화 키 우선 로드
-if (localStorage.getItem("gemini_api_key")) {
-  apiKey = localStorage.getItem("gemini_api_key");
-  inputApiKey.value = apiKey;
-} else {
-  apiKey = getDecodedKey();
-  inputApiKey.value = "●●●●●●●●●●●●●●●●●●●●";
+function updateApiKeyInputUI() {
+  if (apiKeys.length > 0) {
+    if (apiKeys.length === 1) {
+      inputApiKey.value = apiKeys[0];
+    } else {
+      inputApiKey.value = apiKeys.map(() => "●●●●").join(", ");
+    }
+  } else {
+    inputApiKey.value = "";
+  }
 }
+
+// 초기 로딩 시 키 세팅 실행
+initializeApiKeys();
 
 // 이벤트 리스너 등록
 btnStartGame.addEventListener("click", startGame);
@@ -75,10 +111,14 @@ function startGame() {
   // 사용자가 임의의 다른 API Key를 입력했는지 확인
   const customKey = inputApiKey.value.trim();
   if (customKey && !customKey.includes("●")) {
-    apiKey = customKey;
-    localStorage.setItem("gemini_api_key", apiKey);
-  } else if (!apiKey) {
-    apiKey = getDecodedKey();
+    const cleanKeys = customKey.split(",")
+      .map(k => k.trim())
+      .filter(k => k.length > 0);
+    
+    if (cleanKeys.length > 0) {
+      apiKeys = cleanKeys;
+      localStorage.setItem("gemini_api_keys", JSON.stringify(apiKeys));
+    }
   }
 
   if (!startupName || !startupItem) {
@@ -154,7 +194,7 @@ async function handleSendMessage() {
       removeLoadingIndicator(loadingId);
       let nextQuestionText = "";
       
-      if (apiKey) {
+      if (apiKeys.length > 0) {
         try {
           nextQuestionText = await callGeminiAPIForNextQuestion(answerText);
         } catch (error) {
@@ -176,7 +216,7 @@ async function handleSendMessage() {
     const loadingId = appendLoadingIndicator();
     
     let evaluationData;
-    if (apiKey) {
+    if (apiKeys.length > 0) {
       try {
         evaluationData = await callGeminiAPIForEvaluation();
       } catch (error) {
@@ -237,10 +277,66 @@ function updateProgress() {
   questionProgress.innerText = `진행률: ${currentStep} / 5`;
 }
 
+// API 호출 공통 헬퍼 (다중 키 로테이션 및 Exponential Backoff Retry 적용)
+async function fetchGeminiWithRetry(endpoint, requestBody, maxRetries = 3) {
+  if (apiKeys.length === 0) {
+    throw new Error("등록된 API 키가 없습니다.");
+  }
+
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    const currentKey = apiKeys[currentKeyIndex];
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${endpoint}?key=${currentKey}`;
+    
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        return await response.json();
+      }
+
+      console.warn(`API 호출 실패 (상태 코드: ${response.status}). 키 인덱스: ${currentKeyIndex}, 시도: ${attempt + 1}/${maxRetries}`);
+      
+      if (response.status === 429 || response.status >= 500) {
+        attempt++;
+        // 다음 키로 로테이션
+        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+        
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+          console.log(`${delay}ms 후 재시도합니다...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+      }
+      
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || `API HTTP Error ${response.status}`);
+      
+    } catch (error) {
+      console.error(`네트워크 또는 API 실행 에러:`, error);
+      attempt++;
+      currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
+      
+      if (attempt < maxRetries) {
+        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw new Error("API 호출 한도 초과 또는 모든 키 실패");
+}
+
 // 4. Gemini API 연동 모듈 (비용 및 속도 최적화: gemini-2.0-flash 사용)
 async function callGeminiAPIForNextQuestion(userAnswer) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  
   const prompt = `당신은 예리하고 친절한 VC 투자심사역 에이든입니다.
 현재 창업 아이템: "${startupItem}" (스타트업명: ${startupName})에 대해 대화를 진행하고 있습니다.
 방금 사용자가 질문에 대해 답변을 제출했습니다: "${userAnswer}"
@@ -248,22 +344,16 @@ async function callGeminiAPIForNextQuestion(userAnswer) {
 이 답변에 대해 2~3줄 내외로 핵심을 짚은 건설적이고 예리한 한글 피드백을 먼저 해주세요.
 그 다음, 다음 질문(질문 ${currentStep}: ${QUESTIONS[currentStep - 1]})을 자연스럽게 덧붙여서 한글로 대답해 주세요.`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.5 }
-    })
-  });
-  
-  const data = await response.json();
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.5 }
+  };
+
+  const data = await fetchGeminiWithRetry("gemini-2.0-flash:generateContent", requestBody);
   return data.candidates[0].content.parts[0].text;
 }
 
 async function callGeminiAPIForEvaluation() {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-  
   // 지금까지의 대화 요약 기록 작성
   let dialogText = chatHistory.map(h => `질문: ${h.question}\n답변: ${h.answer}`).join("\n\n");
   
@@ -284,19 +374,15 @@ ${dialogText}
   "pitch": "이 스타트업을 위해 고도화해준 최종 완성본 1분 IR 피칭 대본 (약 300~400자 내외, 초중고 비전공자 학생들이 쉽게 말할 수 있는 힘 있고 설득력 넘치는 한국어 톤앤매너로 작성)"
 }`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { 
-        temperature: 0.3,
-        responseMimeType: "application/json"
-      }
-    })
-  });
-  
-  const data = await response.json();
+  const requestBody = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { 
+      temperature: 0.3,
+      responseMimeType: "application/json"
+    }
+  };
+
+  const data = await fetchGeminiWithRetry("gemini-2.0-flash:generateContent", requestBody);
   const rawText = data.candidates[0].content.parts[0].text;
   return JSON.parse(rawText);
 }
