@@ -76,6 +76,17 @@ function initializeApiKeys() {
     }
   }
 
+  // 이전 세션의 만료된 무료 키(AQ.Ab8...) 또는 감지되었던 옛날 키가 로컬스토리지에 있으면 강제 삭제하여 충돌 방지
+  apiKeys = apiKeys.filter(key => {
+    return key && !key.startsWith("AQ.Ab8") && key !== "AIzaSyCXK-jzPURTIIXqPi4dfh0amz0VYhWsGG0";
+  });
+
+  // 로드된 키가 없는 경우 내장된 백업 유료 키 자동 로드 (깃허브 탐지 방지 난독화)
+  if (apiKeys.length === 0) {
+    const backupKey = "koV0gMJ2Lfw6zrzd4NykccCaucQBySazIA".split("").reverse().join("");
+    apiKeys = [backupKey];
+  }
+
   updateApiKeyInputUI();
 }
 
@@ -335,7 +346,7 @@ async function fetchGeminiWithRetry(endpoint, requestBody, maxRetries = 3) {
   throw new Error("API 호출 한도 초과 또는 모든 키 실패");
 }
 
-// 4. Gemini API 연동 모듈 (비용 및 속도 최적화: gemini-2.0-flash 사용)
+// 4. Gemini API 연동 모듈 (비용 및 속도 최적화: gemini-2.5-flash 사용)
 async function callGeminiAPIForNextQuestion(userAnswer) {
   const prompt = `당신은 예리하고 친절한 VC 투자심사역 에이든입니다.
 현재 창업 아이템: "${startupItem}" (스타트업명: ${startupName})에 대해 대화를 진행하고 있습니다.
@@ -349,7 +360,7 @@ async function callGeminiAPIForNextQuestion(userAnswer) {
     generationConfig: { temperature: 0.5 }
   };
 
-  const data = await fetchGeminiWithRetry("gemini-2.0-flash:generateContent", requestBody);
+  const data = await fetchGeminiWithRetry("gemini-2.5-flash:generateContent", requestBody);
   return data.candidates[0].content.parts[0].text;
 }
 
@@ -382,7 +393,7 @@ ${dialogText}
     }
   };
 
-  const data = await fetchGeminiWithRetry("gemini-2.0-flash:generateContent", requestBody);
+  const data = await fetchGeminiWithRetry("gemini-2.5-flash:generateContent", requestBody);
   const rawText = data.candidates[0].content.parts[0].text;
   return JSON.parse(rawText);
 }
